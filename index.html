@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>レジ調査</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Helvetica Neue", sans-serif;
+  background: #f0f2f7;
+  color: #1a1a2e;
+  font-size: 16px;
+  padding-bottom: 40px;
+}
+header {
+  background: #1a1d3a;
+  color: #fff;
+  padding: 14px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+header h1 { font-size: 17px; font-weight: 700; }
+header p  { font-size: 11px; color: #9099bb; margin-top: 2px; }
+
+main { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+.card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.card-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4f7cff;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #eef0f8;
+}
+
+.field { margin-bottom: 13px; }
+.field:last-child { margin-bottom: 0; }
+.field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 5px;
+}
+.req { color: #e05; margin-left: 2px; }
+
+input[type="text"],
+input[type="date"],
+input[type="time"],
+input[type="number"],
+input[type="email"],
+select,
+textarea {
+  width: 100%;
+  border: 1.5px solid #dde1f0;
+  border-radius: 10px;
+  font-family: -apple-system, sans-serif;
+  font-size: 16px;
+  padding: 11px 13px;
+  background: #fafbff;
+  color: #1a1a2e;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: #4f7cff;
+  background: #fff;
+}
+input::placeholder, textarea::placeholder { color: #aaa; }
+textarea { resize: none; line-height: 1.6; }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* レジ台数 */
+.num-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.num-row:last-child { margin-bottom: 0; }
+.num-row .num-label { flex: 1; font-size: 13px; font-weight: 600; color: #333; }
+.num-row input[type="number"] {
+  width: 90px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  padding: 10px;
+}
+
+/* チェックボックス */
+.chk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.chk-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f5f6fc;
+  border: 1.5px solid #dde1f0;
+  border-radius: 10px;
+  padding: 11px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.chk-item input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  accent-color: #4f7cff;
+  margin: 0;
+  padding: 0;
+  border: none;
+  -webkit-appearance: checkbox;
+  appearance: checkbox;
+}
+
+/* 送信ボタン */
+.btn-send {
+  display: block;
+  width: 100%;
+  background: #4f7cff;
+  color: #fff;
+  border: none;
+  border-radius: 13px;
+  font-family: -apple-system, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(79,124,255,0.35);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.btn-send:active { opacity: .75; }
+
+.note-small {
+  font-size: 12px;
+  color: #888;
+  text-align: center;
+  margin-top: 8px;
+  line-height: 1.6;
+}
+
+/* メール保存バッジ */
+.saved-badge {
+  display: inline-block;
+  font-size: 11px;
+  color: #4f7cff;
+  margin-left: 6px;
+  font-weight: 600;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏪 レジ調査フォーム</h1>
+  <p>入力後「メールで送信」をタップしてください</p>
+</header>
+
+<main>
+
+  <!-- 送信先メール -->
+  <div class="card">
+    <div class="card-title">送信先メール <span class="saved-badge" id="savedBadge"></span></div>
+    <div class="field">
+      <label>送信先アドレス（保存されます）</label>
+      <input type="email" id="toEmail" placeholder="buyer@example.com"
+             inputmode="email" autocomplete="email"
+             onchange="saveEmail()" onblur="saveEmail()">
+    </div>
+  </div>
+
+  <!-- 基本情報 -->
+  <div class="card">
+    <div class="card-title">基本情報</div>
+    <div class="field">
+      <label>調査日<span class="req">*</span></label>
+      <input type="date" id="fDate">
+    </div>
+    <div class="field">
+      <label>調査時刻</label>
+      <input type="time" id="fTime">
+    </div>
+    <div class="field">
+      <label>調査担当者</label>
+      <input type="text" id="surveyor" placeholder="氏名を入力" autocomplete="name">
+    </div>
+    <div class="field">
+      <label>競合店名<span class="req">*</span></label>
+      <input type="text" id="storeName" placeholder="例：フレスタ○○店" autocomplete="off">
+    </div>
+    <div class="row2">
+      <div class="field" style="margin:0">
+        <label>業態</label>
+        <select id="storeType">
+          <option value="">選択</option>
+          <option>SM</option><option>SS</option><option>GMS</option>
+          <option>DS</option><option>DgS</option><option>CvS</option><option>その他</option>
+        </select>
+      </div>
+      <div class="field" style="margin:0">
+        <label>調査時間帯</label>
+        <select id="timeSlot">
+          <option value="">選択</option>
+          <option>開店〜10時</option><option>10〜12時</option><option>12〜14時</option>
+          <option>14〜17時</option><option>17〜20時</option><option>20時以降</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- レジ台数 -->
+  <div class="card">
+    <div class="card-title">レジ台数</div>
+    <div class="num-row">
+      <span class="num-label">有人レジ</span>
+      <input type="number" id="nManned" min="0" max="99" placeholder="―">
+    </div>
+    <div class="num-row">
+      <span class="num-label">セルフレジ</span>
+      <input type="number" id="nSelf" min="0" max="99" placeholder="―">
+    </div>
+    <div class="num-row">
+      <span class="num-label">半セルフ</span>
+      <input type="number" id="nSemi" min="0" max="99" placeholder="―">
+    </div>
+    <div class="num-row">
+      <span class="num-label">稼働中（有人）</span>
+      <input type="number" id="nActive" min="0" max="99" placeholder="―">
+    </div>
+  </div>
+
+  <!-- 決済手段 -->
+  <div class="card">
+    <div class="card-title">決済手段（該当するものを選択）</div>
+    <div class="chk-grid">
+      <label class="chk-item"><input type="checkbox" id="pCoGCa" value="CoGCa"> CoGCa</label>
+      <label class="chk-item"><input type="checkbox" id="pIC"    value="交通系IC"> 交通系IC</label>
+      <label class="chk-item"><input type="checkbox" id="pCredit" value="クレジット"> クレジット</label>
+      <label class="chk-item"><input type="checkbox" id="pPayPay" value="PayPay"> PayPay</label>
+      <label class="chk-item"><input type="checkbox" id="pD"     value="d払い"> d払い</label>
+      <label class="chk-item"><input type="checkbox" id="pRakuten" value="楽天Pay"> 楽天Pay</label>
+      <label class="chk-item"><input type="checkbox" id="pAu"    value="au PAY"> au PAY</label>
+      <label class="chk-item"><input type="checkbox" id="pCash"  value="現金のみ"> 現金のみ</label>
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label>その他決済</label>
+      <input type="text" id="payOther" placeholder="例：独自ポイントカード" autocomplete="off">
+    </div>
+  </div>
+
+  <!-- 混雑 -->
+  <div class="card">
+    <div class="card-title">混雑・待ち状況</div>
+    <div class="row2">
+      <div class="field" style="margin:0">
+        <label>混雑度</label>
+        <select id="crowdLevel">
+          <option value="">選択</option>
+          <option>空き（待ちなし）</option>
+          <option>やや混雑（1〜2人）</option>
+          <option>混雑（3〜5人）</option>
+          <option>大混雑（6人以上）</option>
+        </select>
+      </div>
+      <div class="field" style="margin:0">
+        <label>最大待ち人数</label>
+        <input type="number" id="maxWait" placeholder="―" min="0" max="99">
+      </div>
+    </div>
+  </div>
+
+  <!-- 備考 -->
+  <div class="card">
+    <div class="card-title">備考・特記事項</div>
+    <textarea id="notes" rows="5" placeholder="気づき・特徴・比較コメント等"></textarea>
+  </div>
+
+  <!-- 送信ボタン -->
+  <div>
+    <button class="btn-send" type="button" id="btnSend">
+      📧　メールで送信
+    </button>
+    <p class="note-small">
+      タップするとメールアプリが開きます。<br>
+      送信先未入力の場合は宛先が空欄になります。
+    </p>
+  </div>
+
+</main>
+
+<script>
+/* =============================================
+   ① メールアドレスをlocalStorageで保存・復元
+   ============================================= */
+var EMAIL_KEY = 'reji_survey_email';
+
+function saveEmail() {
+  var v = document.getElementById('toEmail').value;
+  try {
+    localStorage.setItem(EMAIL_KEY, v);
+    document.getElementById('savedBadge').textContent = '✔ 保存済み';
+  } catch(e) {}
+}
+
+function loadEmail() {
+  try {
+    var v = localStorage.getItem(EMAIL_KEY);
+    if (v) {
+      document.getElementById('toEmail').value = v;
+      document.getElementById('savedBadge').textContent = '✔ 保存済み';
+    }
+  } catch(e) {}
+}
+
+loadEmail(); /* ページ読み込み時に復元 */
+
+/* =============================================
+   ② メール送信（mailto: をaタグ経由で起動）
+      iOSではwindow.location.hrefより
+      a要素のclick()の方が確実に動く
+   ============================================= */
+document.getElementById('btnSend').addEventListener('click', function() {
+  var store  = document.getElementById('storeName').value;
+  if (!store) { alert('競合店名を入力してください'); return; }
+
+  var date   = document.getElementById('fDate').value    || '';
+  var time   = document.getElementById('fTime').value    || '';
+  var who    = document.getElementById('surveyor').value || '（未入力）';
+  var typ    = document.getElementById('storeType').value  || '―';
+  var ts     = document.getElementById('timeSlot').value   || '―';
+  var manned = document.getElementById('nManned').value    || '―';
+  var self_  = document.getElementById('nSelf').value      || '―';
+  var semi   = document.getElementById('nSemi').value      || '―';
+  var active = document.getElementById('nActive').value    || '―';
+  var crowd  = document.getElementById('crowdLevel').value || '―';
+  var maxW   = document.getElementById('maxWait').value    || '―';
+  var payOth = document.getElementById('payOther').value   || '';
+  var notes  = document.getElementById('notes').value      || '（なし）';
+  var to     = document.getElementById('toEmail').value    || '';
+
+  /* 合計（数値が入っている場合のみ計算） */
+  var mn = parseInt(manned), sl = parseInt(self_), sm = parseInt(semi);
+  var total = (isNaN(mn)?0:mn) + (isNaN(sl)?0:sl) + (isNaN(sm)?0:sm);
+  var totalStr = (isNaN(mn)&&isNaN(sl)&&isNaN(sm)) ? '―' : String(total);
+
+  /* 決済手段 */
+  var payIds = ['pCoGCa','pIC','pCredit','pPayPay','pD','pRakuten','pAu','pCash'];
+  var pays = [];
+  for (var i = 0; i < payIds.length; i++) {
+    var el = document.getElementById(payIds[i]);
+    if (el && el.checked) pays.push(el.value);
+  }
+  var payStr = pays.length > 0 ? pays.join('・') : '―';
+  if (payOth) payStr += ' / その他:' + payOth;
+
+  var dt = date + (time ? ' ' + time : '');
+
+  var body = [
+    '■ レジ調査報告',
+    '────────────────────────',
+    '調査日時　　: ' + dt,
+    '調査担当　　: ' + who,
+    '競合店名　　: ' + store + '　[' + typ + ']',
+    '調査時間帯　: ' + ts,
+    '',
+    '【レジ台数】',
+    '有人　　　  : ' + manned + '台',
+    'セルフ　　  : ' + self_  + '台',
+    '半セルフ　  : ' + semi   + '台',
+    '合計設置台数: ' + totalStr + '台',
+    '稼働中(有人): ' + active + '台',
+    '',
+    '【決済手段】',
+    payStr,
+    '',
+    '【混雑状況】',
+    '混雑度　　  : ' + crowd,
+    '最大待ち　  : ' + maxW + '人',
+    '',
+    '【備考】',
+    notes,
+    '',
+    '────────────────────────',
+    '■ CSV（Excelに貼付用）',
+    '調査日時,担当者,店名,業態,時間帯,有人,セルフ,半セルフ,合計,稼働,決済手段,混雑度,最大待ち,備考',
+    [dt, who, store, typ, ts, manned, self_, semi, totalStr, active,
+     '"' + payStr + '"', crowd, maxW,
+     '"' + notes.replace(/\n/g, ' ') + '"'].join(',')
+  ].join('\n');
+
+  var subj = encodeURIComponent('【レジ調査】' + store + '　' + date);
+  var bod  = encodeURIComponent(body);
+  var href = 'mailto:' + to + '?subject=' + subj + '&body=' + bod;
+
+  /* iOSで確実に動く方法：非表示aタグをDOMに追加してclick */
+  var a = document.createElement('a');
+  a.href = href;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() { document.body.removeChild(a); }, 500);
+});
+</script>
+
+</body>
+</html>
